@@ -49,8 +49,7 @@ A production-ready, self-hosted daemon to bidirectionally synchronize listening 
 version: "3.8"
 services:
   sync:
-    image: ghcr.io/your-repo/audible-abs-sync:latest
-    build: .
+    image: ghcr.io/kidhasmoxy/audible-abs-sync:main
     volumes:
       - ./data:/data
     environment:

@@ -1,7 +1,7 @@
 services:
   audible-abs-sync:
-    build: .
-    image: audible-abs-sync:latest
+    image: ghcr.io/kidhasmoxy/audible-abs-sync:main
+    # build: .
     container_name: audible_abs_sync
     restart: unless-stopped
     volumes:
