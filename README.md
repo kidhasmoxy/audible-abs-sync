@@ -17,15 +17,27 @@ A production-ready, self-hosted daemon to bidirectionally synchronize listening 
 
    **Generating the session file using Docker (Recommended):**
    
-   Run the following command. It will print a URL to login with your browser, and then ask for the redirect URL.
+   1. Ensure your `data/` directory exists:
+      ```bash
+      mkdir -p data
+      ```
+   2. Run the authentication flow command below.
+      - Replace `us` with your locale code (e.g., `uk`, `de`, `ca`, `au`) if needed.
+      - **Note**: This assumes you are in the project directory.
    
-   ```bash
-   # Ensure your data directory exists
-   mkdir -p data
+      ```bash
+      docker compose run --rm -it --entrypoint "" audible-abs-sync python -c "import audible; auth = audible.Authenticator.from_login_external(locale='us'); auth.to_file('/data/audible_session.json'); print('Saved session to /data/audible_session.json')"
+      ```
    
-   # Run the auth flow (replace 'us' with your locale if different)
-   docker compose run --rm -it --entrypoint "" audible-abs-sync python -c "import audible; auth = audible.Authenticator.from_login_external(locale='us'); auth.to_file('/data/audible_session.json'); print('Saved session to /data/audible_session.json')"
-   ```
+   3. The command will output an Amazon login URL. 
+      - Open it in your browser.
+      - Log in to your Audible/Amazon account.
+      - You will be redirected to a page (often with a "Looking for something?" error or similar). This is expected.
+      - **Copy the entire URL** of that redirected page.
+   
+   4. Paste the redirected URL back into the terminal prompt and hit Enter.
+   
+   5. The script will save `audible_session.json` to your `data/` directory.
 
 
 ## Quick Start (Docker Compose)
@@ -60,6 +72,7 @@ All configuration is done via Environment Variables.
 |----------|---------|-------------|
 | `ABS_BASE_URL` | Required | URL of your ABS server |
 | `ABS_TOKEN` | Required | Bearer token for ABS |
+| `ABS_LIBRARY_ID` | Optional | Limit sync to specific Library UUID |
 | `AUDIBLE_LOCALE` | `us` | Audible marketplace locale |
 | `SYNC_INTERVAL_SECONDS` | `120` | Main sync loop interval |
 | `ONE_WAY_MODE` | `bidirectional` | Options: `bidirectional`, `audible_to_abs`, `abs_to_audible` |
