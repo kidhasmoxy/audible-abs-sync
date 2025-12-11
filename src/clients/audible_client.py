@@ -88,24 +88,48 @@ class AudibleClient:
         if not self._auth_ready:
             return []
         
-        # Convert to ISO format or whatever the API expects if needed, 
-        # but the library endpoint typically takes standard params.
-        # Note: 'purchased_after' is not always a standard filter on all locales,
-        # fallback to recent list if needed. Assuming standard library sort.
         try:
             data = await self.client.get(
                 "1.0/library",
                 params={
                     "num_results": 50,
                     "sort": "-purchase_date",
-                    "response_groups": "product_desc"
+                    "response_groups": "product_attrs"
                 }
             )
-            # Filter manually if API doesn't support strict time filter
-            # Logic here is simplified to just return recent items as candidates
-            return [item["asin"] for item in data.get("items", [])]
+            return [item["asin"] for item in data.get("items", []) if "asin" in item]
         except Exception as e:
-            logger.error(f"Failed to fetch library: {e}")
+            logger.error(f"Failed to fetch newly purchased: {e}")
+            return []
+        
+    async def get_recently_played(self, limit: int = 10) -> List[str]:
+        """
+        Fetch the most recently accessed items from Audible library.
+        Useful for catching 'old' books that the user started listening to again.
+        """
+        if not self._auth_ready:
+            return []
+            
+        try:
+            # sort=-DateAccessed puts most recently interacted items first
+            data = await self.client.get(
+                "1.0/library",
+                params={
+                    "response_groups": "product_attrs", # minimal
+                    "sort": "-DateAccessed",
+                    "num_results": limit
+                }
+            )
+            
+            asins = []
+            for item in data.get("items", []):
+                asin = item.get("asin")
+                if asin:
+                    asins.append(asin)
+            
+            return asins
+        except Exception as e:
+            logger.error(f"Failed to fetch recently played from Audible: {e}")
             return []
 
     async def deep_scan_progress(self) -> List[str]:

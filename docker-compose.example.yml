@@ -17,6 +17,7 @@ services:
       - AUDIBLE_LOCALE=us
       # Generate this file using the command in README.md
       - AUDIBLE_AUTH_JSON_PATH=/data/audible_session.json
+      - AUDIBLE_RECENTLY_PLAYED_LIMIT=10  # Number of recently accessed items to check every sync
       
       # Sync Configuration
       - SYNC_INTERVAL_SECONDS=120

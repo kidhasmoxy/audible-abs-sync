@@ -19,6 +19,11 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+# Silence noisy libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("audible").setLevel(logging.WARNING)
+
 logger = logging.getLogger("main")
 
 class SyncService:
@@ -82,6 +87,14 @@ class SyncService:
                 abs_items = await self.abs.get_in_progress()
                 for asin in abs_items.keys():
                     candidates.add(asin)
+
+                # Add Audible Recently Played (poll live activity)
+                recent_audible = await self.audible.get_recently_played(limit=settings.AUDIBLE_RECENTLY_PLAYED_LIMIT)
+                if recent_audible:
+                    for asin in recent_audible:
+                        candidates.add(asin)
+                    # Update watchlist to persist these active items
+                    self.state_manager.update_watchlist(recent_audible)
 
                 candidate_list = list(candidates)
                 if not candidate_list:

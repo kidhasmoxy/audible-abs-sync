@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     AUDIBLE_LIBRARY_DISCOVERY_INTERVAL_SECONDS: int = 21600  # 6h
     AUDIBLE_DEEP_SCAN_INTERVAL_SECONDS: int = 86400  # 24h
     DEEP_SCAN_MAX_IN_PROGRESS: int = 200
+    AUDIBLE_RECENTLY_PLAYED_LIMIT: int = 10
 
     # Persistence
     STATE_PATH: str = "/data/state.json"
