@@ -1,5 +1,6 @@
 import logging
 import httpx
+import asyncio
 from typing import Dict, List, Optional, Tuple
 from ..config import settings
 from ..models import SyncItem
@@ -15,6 +16,7 @@ class ABSClient:
         )
         self.user_id: Optional[str] = settings.ABS_USER_ID
         self.asin_map: Dict[str, str] = {}  # asin -> item_id
+        self.item_map: Dict[str, str] = {}  # item_id -> asin
         self.libraries: List[str] = []
 
     async def initialize(self):
@@ -35,6 +37,18 @@ class ABSClient:
             logger.error(f"Failed to initialize ABS client: {e}")
             raise
 
+    async def get_library_item_asin(self, item_id: str) -> Optional[str]:
+        try:
+            resp = await self.client.get(f"/api/items/{item_id}")
+            if resp.status_code == 200:
+                data = resp.json()
+                media = data.get("media", {})
+                metadata = media.get("metadata", {})
+                return metadata.get("asin")
+        except Exception:
+            pass
+        return None
+
     async def get_in_progress(self) -> Dict[str, SyncItem]:
         """
         Returns map of ASIN -> SyncItem (with abs_pos filled).
@@ -50,17 +64,56 @@ class ABSClient:
             user_data = data.get("user", data)
             items = user_data.get("mediaProgress", [])
             
+            # 1. Identify missing ASINs
+            unknown_ids = []
             for prog in items:
-                # Progress object usually contains 'media' expanded
+                # Direct check
+                media = prog.get("media", {})
+                metadata = media.get("metadata", {})
+                asin = metadata.get("asin")
+                item_id = prog.get("libraryItemId")
+                
+                if not asin and item_id:
+                    if item_id in self.item_map:
+                        # Already cached
+                        pass
+                    else:
+                        unknown_ids.append(item_id)
+            
+            # 2. Fetch unknown in parallel chunks
+            if unknown_ids:
+                logger.info(f"Fetching ASINs for {len(unknown_ids)} ABS items...")
+                chunk_size = 10
+                for i in range(0, len(unknown_ids), chunk_size):
+                    chunk = unknown_ids[i:i+chunk_size]
+                    tasks = [self.get_library_item_asin(uid) for uid in chunk]
+                    results_asins = await asyncio.gather(*tasks)
+                    
+                    for uid, found_asin in zip(chunk, results_asins):
+                        if found_asin:
+                            self.item_map[uid] = found_asin
+                            self.asin_map[found_asin] = uid
+                        else:
+                            # Cache as empty to avoid refetching
+                            self.item_map[uid] = ""
+
+            # 3. Process items
+            for prog in items:
                 media = prog.get("media", {})
                 metadata = media.get("metadata", {})
                 asin = metadata.get("asin")
                 
+                item_id = prog.get("libraryItemId") or media.get("id")
+                
+                # Fallback to cache
+                if not asin and item_id:
+                    asin = self.item_map.get(item_id)
+                
                 if not asin:
                     continue
 
-                item_id = media.get("id")
-                self.asin_map[asin] = item_id
+                if item_id:
+                    self.asin_map[asin] = item_id
                 
                 current_time = prog.get("currentTime")
                 duration = prog.get("duration") # or media.duration

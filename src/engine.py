@@ -11,6 +11,16 @@ class SyncEngine:
     def __init__(self, state_manager: StateManager):
         self.sm = state_manager
 
+    def update_post_sync_state(self, asin: str, pushed_audible_ms: Optional[int] = None, pushed_abs_s: Optional[float] = None):
+        """
+        Updates the last_seen values after a successful push to prevent ping-pong detection in the next loop.
+        """
+        status = self.sm.get_sync_status(asin)
+        if pushed_audible_ms is not None:
+            status.last_seen_audible_position_ms = pushed_audible_ms
+        if pushed_abs_s is not None:
+            status.last_seen_abs_position_s = pushed_abs_s
+
     def sync_item(self, item: SyncItem, current_audible_ms: Optional[int], current_abs_s: Optional[float]):
         """
         Determines and returns (update_audible_to_ms, update_abs_to_s).

@@ -146,9 +146,11 @@ class SyncService:
                         # Apply Updates
                         if target_audible is not None:
                             await self.audible.update_position(asin, target_audible)
+                            self.engine.update_post_sync_state(asin, pushed_audible_ms=target_audible)
                         
                         if target_abs is not None:
                             await self.abs.update_progress(item.abs_item_id, target_abs)
+                            self.engine.update_post_sync_state(asin, pushed_abs_s=target_abs)
 
                 self.state_manager.state.last_successful_sync = time.time()
                 self.state_manager.save()
